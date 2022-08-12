@@ -1,15 +1,17 @@
 <template>
     <div class="ww-header">
         <h2 class="ww-header__title">
-            <span v-if="displayType === 'main'">{{currentLocate?.city}}, {{currentLocate?.country}}</span>
-            <span v-if="displayType === 'setting'">Settings</span>
+            <span v-if="displayTypes === 'main'">{{currentLocate?.city}}, {{currentLocate?.country}}</span>
+            <span v-if="displayTypes === 'setting'">Settings</span>
         </h2>
         <div class="ww-header__icons">
-            <my-setting-icon v-if="displayType === 'main'"
+            <my-setting-icon v-if="displayTypes === 'main'"
                             class="icon-setting"
+                            @click="$emit('update:displayTypes', 'setting')"
             />
-            <my-close-icon v-else-if="displayType === 'setting'"
+            <my-close-icon v-else-if="displayTypes === 'setting'"
                             class="icon-close"
+                            @click="$emit('update:displayTypes', 'main')"
             />
         </div>
     </div>
@@ -17,8 +19,10 @@
 
 <script lang="ts">
 import { defineComponent, PropType, ref } from 'vue';
-import CurrentLocate from '../types/CurrentLocate';
-import DisplayType from '../types/DisplayTypeInHeader';
+
+import CurrentCityCounty from '../types/CurrentCityCounty';
+import DisplayType from '../types/DisplayType';
+
 import MySettingIcon from './UI/MySettingIcon.vue';
 import MyCloseIcon from './UI/MyCloseIcon.vue';
 
@@ -29,14 +33,15 @@ export default defineComponent({
     },
     props:{
         currentLocate:{
-            type: Object as PropType<CurrentLocate>,
+            type: Object as PropType<CurrentCityCounty>
+        },
+        displayTypes: {
+            type: String as PropType<DisplayType>
         }
     },
 
     setup () {
-        const displayType = ref<DisplayType>('main')
-
-        return {displayType}
+        return {}
     }
 })
 </script>

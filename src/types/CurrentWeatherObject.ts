@@ -1,18 +1,19 @@
-import CurrentLocate from './CurrentLocate';
+import CurrentCityCounty from './CurrentCityCounty';
+import CompassSector from './CompassSector'
 
 interface currentWeatherObject {
-    locate: CurrentLocate,
+    locate: CurrentCityCounty,
     icon: string,
     temp: number,
     feelsLike: number,
     description: string,
     wind:{
         speed: number,
-        deg: number
+        deg: number,
+        direction: CompassSector
     },
     pressure: number,
     humidity: number,
-    dewPoint: number,
     visibility: number,
 };
 

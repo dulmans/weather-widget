@@ -2,7 +2,9 @@
   <div class="ww-app">
     <widget-header
     :currentLocate="currentWeatherInfo.locate"
+    v-model:displayTypes="displayType"
     />
+    <!-- <widget-settings /> -->
     <main-widget
     :current="currentWeatherInfo"
     />
@@ -12,39 +14,51 @@
 <script lang="ts">
 import { computed, defineComponent, ref } from 'vue';
 import axios from 'axios';
+
 import CurrentWeatherObject from './types/CurrentWeatherObject';
+import CoordsAllowedFunc from './types/CoordsAllowedFunc';
+import DisplayType from './types/DisplayType';
+import LocateList from './types/LocateList';
+import GetApiJson from './types/GetApiJson';
+import CompassSector from './types/CompassSector';
+
 import MainWidget from './components/MainWidget.vue';
 import WidgetHeader from './components/WidgetHeader.vue';
+
 
 export default defineComponent({
   components: {
     MainWidget,
     WidgetHeader,
-},
+  },
 
   setup(){
     const appIdOWM: string = 'c01eddb28c0ce3174c7282f5172965f1';
+
+    const displayType = ref<DisplayType>('main')
 
     const currentWeatherInfo = ref<CurrentWeatherObject>({
       locate: {
         city: 'Tutaev',
         country: 'RU'
       },
-      icon: '',
+      icon: '01d',
       temp: 0,
       feelsLike: 0,
-      description: '',
+      description: 'ds',
       wind:{
           speed: 0,
-          deg: 0
+          deg: 0,
+          direction: 'N'
       },
       pressure: 0,
       humidity: 0,
-      dewPoint: 0,
       visibility: 0
     });
 
-    const getWeatherAPI = async (latIn: number, lonIn: number):Promise<void> => {
+    const locateList = ref<LocateList[] | []>([]);
+
+    const getWeatherAPI = async (latIn: number, lonIn: number):Promise<GetApiJson> => {
       const response = await axios.get('https://api.openweathermap.org/data/2.5/weather?', {
           params: {
             lat: latIn,
@@ -53,23 +67,111 @@ export default defineComponent({
             units: 'metric'
           }
         });
-        console.log(response.data);
+      return response.data;
     };
 
+    const scenarioAllowedLocate = async ({coords}: any) => {
+      const coordsFunc:CoordsAllowedFunc = {
+        latitude: coords.latitude ?? 0,
+        longitude: coords.longitude ?? 0
+      }
+      const responsse = await getWeatherAPI(coordsFunc.latitude, coordsFunc.longitude);
+      console.log(responsse.name);
+
+      if(localStorage?.locateList.length !== 0){
+
+      }
+    };
+
+    const scenarioUnAllowedLocate = () => {
+      console.log('UNALLOWED');
+    };
+
+    const checkCurrentLocate = computed(() => {
+      if(locateList.value){
+        for(const curren of locateList.value){
+          if(curren?.current){
+            return curren;
+          }
+        }
+        return locateList.value[0];
+      }
+    });
+
+    const getCurrentWeather = (getWeather: GetApiJson) => {
+      if(getWeather){
+        const compassSector:CompassSector[] = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW", "N"];
+        const windDirection:CompassSector = compassSector[Math.round(getWeather.wind.deg / 22.5)];
+
+        const descript = () => {
+          const descArr=getWeather.weather[0].description.split('');
+          descArr[0]=descArr[0].toUpperCase();
+          return descArr.join('') ?? '';
+        };
+
+        currentWeatherInfo.value = {
+          locate: {
+            city: getWeather.name,
+            country: getWeather.sys.country
+          },
+          icon: getWeather.weather[0].icon,
+          temp: getWeather.main.temp,
+          feelsLike: getWeather.main.feels_like,
+          description: descript(),
+          wind:{
+              speed: getWeather.wind.speed,
+              deg: getWeather.wind.deg,
+              direction: windDirection
+          },
+          pressure: getWeather.main.pressure,
+          humidity: getWeather.main.humidity,
+          visibility: getWeather.visibility
+        }
+      }
+    }
+
+    const getJSONCurrentWeather = computed(async () => {
+      const lat = checkCurrentLocate.value?.coords.latitude ?? 0;
+      const lon = checkCurrentLocate.value?.coords.longitude ?? 0;
+      getCurrentWeather(await getWeatherAPI(lat, lon));
+    })
 
 
     return {
       currentWeatherInfo,
       getWeatherAPI,
+      scenarioAllowedLocate,
+      scenarioUnAllowedLocate,
+      locateList,
+      displayType,
+      getJSONCurrentWeather,
+      getCurrentWeather,
+      checkCurrentLocate
     }
   },
+
   mounted(){
-    navigator.geolocation.getCurrentPosition((position) => {
-      console.log(position);
-      this.getWeatherAPI(1,1)
-    }, function(postionError){
-      console.log(postionError);
-    }, {enableHighAccuracy: true})
+    const testOb:LocateList[] = [{
+          id: 1,
+          locateInfo: {
+              city: 'Tut',
+              country: 'RU'
+          },
+          coords: {
+              latitude: 57.8853,
+              longitude: 39.5406
+          },
+          current: false,
+    }]
+    localStorage.setItem('locateList', JSON.stringify(testOb))
+    if(localStorage?.locateList){
+      this.locateList = JSON.parse(localStorage?.locateList);
+      this.getJSONCurrentWeather;
+    };
+
+    navigator.geolocation.getCurrentPosition(this.scenarioAllowedLocate,
+                                            this.scenarioUnAllowedLocate,
+                                            {enableHighAccuracy: true});
   }
 });
 </script>
@@ -88,6 +190,10 @@ export default defineComponent({
     vertical-align: baseline;
     box-sizing: border-box;
     color: $main-color;
+  }
+
+  svg{
+    fill: $main-color;
   }
 
   .ww-app{
@@ -118,4 +224,50 @@ export default defineComponent({
       }
     }
   }
+
+  .ww-main {
+    .ww-temp__section {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      > *{flex-basis: 50%;}
+      .ww-sky__img {
+        height: 90px;
+      }
+      .ww-temp__text {
+        font-size: 2.4em;
+        font-weight: 700;
+      }
+    }
+    .ww-description__section {
+      margin-bottom: 20px;
+    }
+
+    .ww-more_info__section {
+      > *:not(:last-child){
+        margin-bottom: 7px;
+      }
+      .ww-more_info__string {
+        display: flex;
+        .ww-more_info__item {
+          overflow: hidden;
+          text-overflow: ellipsis;
+          flex-basis: 50%;
+          display: flex;
+          align-items: center;
+        }
+      }
+      .ww-main__text {
+        font-size: 0.9em;
+        white-space: nowrap;
+
+      }
+      .ww-icons {
+        width: auto;
+        height: 0.9em;
+        margin-right: 4px;
+      }
+    }
+  }
+
 </style>
