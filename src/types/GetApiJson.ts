@@ -21,6 +21,10 @@ interface GetApiJson {
         feels_like: number,
         humidity: number,
         pressure: number,
+    },
+    coord?: {
+        lat: number,
+        lon: number
     }
 }
 

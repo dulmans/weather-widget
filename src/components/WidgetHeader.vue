@@ -1,6 +1,6 @@
 <template>
     <div class="ww-header">
-        <h2 class="ww-header__title">
+        <h2 :class="[{'ww-load': Boolean(currentLocate?.city === 'load')}, 'ww-header__title']">
             <span v-if="displayTypes === 'main'">{{currentLocate?.city}}, {{currentLocate?.country}}</span>
             <span v-if="displayTypes === 'setting'">Settings</span>
         </h2>

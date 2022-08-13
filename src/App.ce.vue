@@ -1,8 +1,20 @@
 <template>
   <div class="ww-app">
-    <my-modal v-if="displayType === 'switch-item'">
-      <modal-switch-item
+    <h3 v-if="showModalInputLocate">OPEN</h3>
+    <h3 v-else-if="!showModalInputLocate">CLOSE</h3>
+    <my-modal v-if="displayType === 'switch-item' || displayType === 'switch-locate'">
+      <modal-switch
+      v-if="displayType === 'switch-item'"
+      :displayTypes="displayType"
       :cityInfoObj="{current: currentWeatherInfo.locate.city, switchTo: locateList[modalSwitchItemIndex].locateInfo.city}"
+      @clickYes="switchItemClick"
+      @clickNo="displayType = 'main'"
+      />
+
+      <modal-switch
+      v-else-if="displayType === 'switch-locate'"
+      :displayTypes="displayType"
+      :cityInfoObj="{current: currentWeatherInfo.locate.city, switchTo: toSwitchObject?.locateInfo.city}"
       @clickYes="switchItemClick"
       @clickNo="displayType = 'main'"
       />
@@ -24,17 +36,18 @@ import { computed, defineComponent, ref } from 'vue';
 import axios from 'axios';
 
 import CurrentWeatherObject from './types/CurrentWeatherObject';
-import CoordsAllowedFunc from './types/CoordsAllowedFunc';
 import DisplayType from './types/DisplayType';
 import LocateList from './types/LocateList';
 import GetApiJson from './types/GetApiJson';
 import CompassSector from './types/CompassSector';
+import Coords from './types/Coords';
 
 import MainWidget from './components/MainWidget.vue';
 import WidgetHeader from './components/WidgetHeader.vue';
 import MyButton from './components/UI/MyButton.vue';
 import MyModal from './components/UI/MyModal.vue';
-import ModalSwitchItem from './components/ModalSwitchItem.vue';
+import ModalSwitch from './components/ModalSwitch.vue';
+import CurrentCityCounty from './types/CurrentCityCounty';
 
 
 export default defineComponent({
@@ -43,19 +56,17 @@ export default defineComponent({
     WidgetHeader,
     MyButton,
     MyModal,
-    ModalSwitchItem
+    ModalSwitch,
 },
 
   setup(){
     const appIdOWM: string = 'c01eddb28c0ce3174c7282f5172965f1';
 
     const displayType = ref<DisplayType>('main');
-
-    const currentIdItem = ref(0);
-
+    const currentIdItem = ref<number>(0);
     const currentWeatherInfo = ref<CurrentWeatherObject>({
       locate: {
-        city: '',
+        city: 'load',
         country: ''
       },
       icon: '01d',
@@ -71,15 +82,38 @@ export default defineComponent({
       humidity: 0,
       visibility: 0
     });
-
-    const locateList = ref<LocateList[] | []>([]);
-
+    const locateList = ref<LocateList[]>([]);
+    const toSwitchObject = ref<LocateList>({id: 0, locateInfo:{city: '', country: ''}, coords:{latitude:0, longitude: 0}});
     const modalSwitchItemIndex = ref(0);
+    const showModalInputLocate = ref<Boolean>(false);
+    const showModalInputLocateTimeout = ref<Boolean>(true);
 
 
     const switchItemClick = () => {
-      currentIdItem.value = locateList.value[modalSwitchItemIndex.value].id;
+      if(displayType.value === 'switch-item'){
+        currentIdItem.value = locateList.value[modalSwitchItemIndex.value].id;
+      }
+      else if(displayType.value === 'switch-locate'){
+        locateList.value.push(toSwitchObject.value);
+        locateList.value = locateList.value.slice();
+        currentIdItem.value = toSwitchObject.value.id;
+      }
       displayType.value = 'main';
+    }
+
+    const LocateListConstruct = (liC:CurrentCityCounty, cC:Coords) => {
+      const res:LocateList = {
+        id: Date.now(),
+        locateInfo: {
+            city: liC.city,
+            country: liC.country
+        },
+        coords: {
+            latitude: cC.latitude,
+            longitude: cC.longitude
+        }
+      };
+      return res;
     }
 
     const getWeatherAPI = async (latIn: number, lonIn: number):Promise<GetApiJson> => {
@@ -95,11 +129,16 @@ export default defineComponent({
     };
 
     const scenarioAllowedLocate = async ({coords}: any) => {
-      const coordsFunc:CoordsAllowedFunc = {
+      showModalInputLocateTimeout.value = false;
+      showModalInputLocate.value = false;
+
+      const coordsFunc:Coords = {
         latitude: coords.latitude ?? 0,
         longitude: coords.longitude ?? 0
       }
       const response:GetApiJson = await getWeatherAPI(coordsFunc.latitude, coordsFunc.longitude);
+      const tempObject:LocateList = LocateListConstruct({city: response.name, country: response.sys.country},
+                                            {latitude: response.coord?.lat ?? 0, longitude: response.coord?.lon ?? 0});
       if(locateList.value.length !== 0){
         for(const [index, checkName] of locateList.value.entries()){
           if(checkName.locateInfo.city === response.name){
@@ -113,10 +152,15 @@ export default defineComponent({
             }
           }
         }
-        /* Модалка переключить актив на текущее местоположение */
+        toSwitchObject.value = tempObject;
+        displayType.value = 'switch-locate';
+        return;
       }
       else{
-        /* Модалка "правильно ли мы определили город" */
+        locateList.value.push(tempObject);
+        locateList.value = locateList.value.slice();
+        currentIdItem.value = tempObject.id;
+        return;
       }
     };
 
@@ -136,58 +180,63 @@ export default defineComponent({
       modalSwitchItemIndex,
       switchItemClick,
       currentIdItem,
-      getWeatherAPI
+      getWeatherAPI,
+      toSwitchObject,
+      showModalInputLocate,
+      showModalInputLocateTimeout
     }
   },
 
   watch: {
     async currentIdItem(){
-      localStorage.setItem('currentId', String(this.currentIdItem));
-      const getCurrentLocate = () => {
-          for(const checkCurrent of this.locateList){
-            if(this.currentIdItem === checkCurrent.id){
-              return checkCurrent;
+      if(this.currentIdItem){
+        localStorage.setItem('currentId', String(this.currentIdItem));
+        const getCurrentLocate = () => {
+            for(const checkCurrent of this.locateList){
+              if(this.currentIdItem === checkCurrent.id){
+                return checkCurrent;
+              }
             }
-          }
-          this.currentIdItem = this.locateList[0].id;
-          return this.locateList[0];
-      };
-      const currentLocate:LocateList = getCurrentLocate();
-
-      const getWeatherJSON = async () => {
-        const lat = currentLocate?.coords?.latitude ?? 0;
-        const lon = currentLocate?.coords?.longitude ?? 0;
-        return await this.getWeatherAPI(lat, lon);
-      };
-      const getWeather:GetApiJson = await getWeatherJSON();
-
-      if(getWeather){
-        const compassSector:CompassSector[] = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW", "N"];
-        const windDirection:CompassSector = compassSector[Math.round(getWeather.wind.deg / 22.5)];
-
-        const descript = () => {
-          const descArr = getWeather.weather[0].description.split('');
-          descArr[0] = descArr[0].toUpperCase();
-          return descArr.join('') ?? '';
+            this.currentIdItem = this.locateList[0].id;
+            return this.locateList[0];
         };
+        const currentLocate:LocateList = getCurrentLocate();
 
-        this.currentWeatherInfo = {
-          locate: {
-            city: getWeather.name,
-            country: getWeather.sys.country
-          },
-          icon: getWeather.weather[0].icon,
-          temp: getWeather.main.temp,
-          feelsLike: getWeather.main.feels_like,
-          description: descript(),
-          wind:{
-              speed: getWeather.wind.speed,
-              deg: getWeather.wind.deg,
-              direction: windDirection
-          },
-          pressure: getWeather.main.pressure,
-          humidity: getWeather.main.humidity,
-          visibility: getWeather.visibility
+        const getWeatherJSON = async () => {
+          const lat = currentLocate?.coords?.latitude ?? 0;
+          const lon = currentLocate?.coords?.longitude ?? 0;
+          return await this.getWeatherAPI(lat, lon);
+        };
+        const getWeather:GetApiJson = await getWeatherJSON();
+
+        if(getWeather){
+          const compassSector:CompassSector[] = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW", "N"];
+          const windDirection:CompassSector = compassSector[Math.round(getWeather.wind.deg / 22.5)];
+
+          const descript = () => {
+            const descArr = getWeather.weather[0].description.split('');
+            descArr[0] = descArr[0].toUpperCase();
+            return descArr.join('') ?? '';
+          };
+
+          this.currentWeatherInfo = {
+            locate: {
+              city: getWeather.name,
+              country: getWeather.sys.country
+            },
+            icon: getWeather.weather[0].icon,
+            temp: getWeather.main.temp,
+            feelsLike: getWeather.main.feels_like,
+            description: descript(),
+            wind:{
+                speed: getWeather.wind.speed,
+                deg: getWeather.wind.deg,
+                direction: windDirection
+            },
+            pressure: getWeather.main.pressure,
+            humidity: getWeather.main.humidity,
+            visibility: getWeather.visibility
+          }
         }
       }
     },
@@ -198,7 +247,7 @@ export default defineComponent({
 
   mounted(){
     // ТЕСТОВЫЙ БЛОК...
-    const testOb:LocateList[] = [
+/*     const testOb:LocateList[] = [
       {
         id: 1,
         locateInfo: {
@@ -208,11 +257,10 @@ export default defineComponent({
         coords: {
             latitude: 57.8853,
             longitude: 39.5406
-        },
-        current: false,
+        }
       },
       {
-        id: 2,
+        id: 1,
         locateInfo: {
             city: 'Moscow',
             country: 'RU'
@@ -220,12 +268,11 @@ export default defineComponent({
         coords: {
             latitude: 55.7522,
             longitude: 37.6156
-        },
-        current: true,
+        }
       }
     ]
     localStorage.setItem('locateList', JSON.stringify(testOb));
-    localStorage.setItem('currentId', '2');
+    localStorage.setItem('currentId', '1'); */
     //... ТЕСТОВЫЙ БЛОК
 
     if(localStorage?.currentId){
@@ -239,6 +286,13 @@ export default defineComponent({
     navigator.geolocation.getCurrentPosition(this.scenarioAllowedLocate,
                                             this.scenarioUnAllowedLocate,
                                             {enableHighAccuracy: true});
+    if(this.locateList.length === 0){
+      setTimeout(() => {
+        if(this.showModalInputLocateTimeout){
+          this.showModalInputLocate = true;
+        }
+    }, 5000)
+    }
   }
 });
 </script>
@@ -275,6 +329,17 @@ export default defineComponent({
     &:hover .ww-header__icons .icon-setting{
       opacity: 1;
     }
+  }
+
+  .ww-load{
+    pointer-events: none;
+    background: $main-color;
+    opacity: .3;
+    -moz-user-select: none;
+    -webkit-user-select: none;
+    -ms-user-select: none;
+    -o-user-select: none;
+    user-select: none;
   }
 
   .ww-button{
@@ -327,7 +392,7 @@ export default defineComponent({
     height: 100%;
     width: 100%;
     background: rgba(255,255,255,1);
-    .ww-modal__switch_item{
+    .ww-modal__switch_item, .ww-modal__switch_locate{
       text-align: center;
       .ww-btn-no{
         margin: 15px 0 5px;

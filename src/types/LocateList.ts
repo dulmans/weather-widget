@@ -1,14 +1,12 @@
+import Coords from './Coords'
+
 interface LocateList{
     id: number,
     locateInfo: {
         city: string,
         country: string
     },
-    coords: {
-        latitude: number,
-        longitude: number
-    },
-    current: boolean,
+    coords: Coords
 }
 
 export default LocateList;
