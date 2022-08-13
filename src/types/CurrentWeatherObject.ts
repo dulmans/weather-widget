@@ -1,9 +1,10 @@
 import CurrentCityCounty from './CurrentCityCounty';
 import CompassSector from './CompassSector'
+import WeatherIcon from './WeatherIcon'
 
 interface currentWeatherObject {
     locate: CurrentCityCounty,
-    icon: string,
+    icon: WeatherIcon,
     temp: number,
     feelsLike: number,
     description: string,

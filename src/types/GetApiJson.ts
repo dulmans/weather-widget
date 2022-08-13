@@ -1,10 +1,12 @@
+import WeatherIcon from './WeatherIcon';
+
 interface GetApiJson {
     name: string,
     visibility: number,
     weather: {
         0: {
             description: string,
-            icon: string
+            icon: WeatherIcon
         }
     },
     wind: {
