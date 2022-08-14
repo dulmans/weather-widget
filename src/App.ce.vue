@@ -1,7 +1,5 @@
 <template>
   <div class="ww-app">
-    <h3 v-if="showModalInputLocate">OPEN</h3>
-    <h3 v-else-if="!showModalInputLocate">CLOSE</h3>
     <my-modal v-if="displayType === 'switch-item' || displayType === 'switch-locate'">
       <modal-switch
       v-if="displayType === 'switch-item'"
@@ -20,6 +18,13 @@
       />
     </my-modal>
 
+    <my-modal v-if="showModalInputLocate.showModal">
+      <modal-inputs-city
+      :appID="appIdOWM"
+      @submitInput="createAndAcitveFirstLocate"
+      />
+    </my-modal>
+
     <widget-header
     :currentLocate="currentWeatherInfo.locate"
     v-model:displayTypes="displayType"
@@ -27,6 +32,11 @@
 
     <main-widget
     :current="currentWeatherInfo"
+    v-if="displayType === 'main'"
+    />
+
+    <settings-widget
+    v-else-if="displayType === 'setting'"
     />
   </div>
 </template>
@@ -41,6 +51,7 @@ import LocateList from './types/LocateList';
 import GetApiJson from './types/GetApiJson';
 import CompassSector from './types/CompassSector';
 import Coords from './types/Coords';
+import ShowModalInputLocate from './types/ShowModalInputLocate';
 
 import MainWidget from './components/MainWidget.vue';
 import WidgetHeader from './components/WidgetHeader.vue';
@@ -48,6 +59,8 @@ import MyButton from './components/UI/MyButton.vue';
 import MyModal from './components/UI/MyModal.vue';
 import ModalSwitch from './components/ModalSwitch.vue';
 import CurrentCityCounty from './types/CurrentCityCounty';
+import ModalInputsCity from './components/ModalInputsCity.vue';
+import SettingsWidget from './components/SettingsWidget.vue';
 
 
 export default defineComponent({
@@ -57,6 +70,8 @@ export default defineComponent({
     MyButton,
     MyModal,
     ModalSwitch,
+    ModalInputsCity,
+    SettingsWidget
 },
 
   setup(){
@@ -85,21 +100,24 @@ export default defineComponent({
     const locateList = ref<LocateList[]>([]);
     const toSwitchObject = ref<LocateList>({id: 0, locateInfo:{city: '', country: ''}, coords:{latitude:0, longitude: 0}});
     const modalSwitchItemIndex = ref(0);
-    const showModalInputLocate = ref<Boolean>(false);
-    const showModalInputLocateTimeout = ref<Boolean>(true);
+    const showModalInputLocate = ref<ShowModalInputLocate>({
+      showModal: false as boolean,
+      timeoutMounted: true as boolean
+    })
 
 
-    const switchItemClick = () => {
-      if(displayType.value === 'switch-item'){
-        currentIdItem.value = locateList.value[modalSwitchItemIndex.value].id;
-      }
-      else if(displayType.value === 'switch-locate'){
-        locateList.value.push(toSwitchObject.value);
-        locateList.value = locateList.value.slice();
-        currentIdItem.value = toSwitchObject.value.id;
-      }
-      displayType.value = 'main';
-    }
+    const getWeatherAPI = async (latIn: number, lonIn: number):Promise<GetApiJson> => {
+      const response = await axios.get('https://api.openweathermap.org/data/2.5/weather?', {
+          params: {
+            lat: latIn,
+            lon: lonIn,
+            limit: 1,
+            appid: appIdOWM,
+            units: 'metric'
+          }
+        });
+      return response.data;
+    };
 
     const LocateListConstruct = (liC:CurrentCityCounty, cC:Coords) => {
       const res:LocateList = {
@@ -114,23 +132,33 @@ export default defineComponent({
         }
       };
       return res;
-    }
+    };
+    const createLocateListItem = (item:LocateList) => {
+      locateList.value.push(item);
+      locateList.value = locateList.value.slice();
+    };
 
-    const getWeatherAPI = async (latIn: number, lonIn: number):Promise<GetApiJson> => {
-      const response = await axios.get('https://api.openweathermap.org/data/2.5/weather?', {
-          params: {
-            lat: latIn,
-            lon: lonIn,
-            appid: appIdOWM,
-            units: 'metric'
-          }
-        });
-      return response.data;
+    const switchItemClick = () => {
+      if(displayType.value === 'switch-item'){
+        currentIdItem.value = locateList.value[modalSwitchItemIndex.value].id;
+      }
+      else if(displayType.value === 'switch-locate'){
+        createLocateListItem(toSwitchObject.value);
+        currentIdItem.value = toSwitchObject.value.id;
+      }
+      displayType.value = 'main';
+    }
+    const createAndAcitveFirstLocate = (event:GetApiJson) => {
+      const tempObject:LocateList = LocateListConstruct({city: event.name, country: event.sys.country},
+                                            {latitude: event.coord?.lat ?? 0, longitude: event.coord?.lon ?? 0});
+      createLocateListItem(tempObject);
+      currentIdItem.value = tempObject.id;
+      showModalInputLocate.value.showModal = false;
     };
 
     const scenarioAllowedLocate = async ({coords}: any) => {
-      showModalInputLocateTimeout.value = false;
-      showModalInputLocate.value = false;
+      showModalInputLocate.value.timeoutMounted = false;
+      showModalInputLocate.value.showModal = false;
 
       const coordsFunc:Coords = {
         latitude: coords.latitude ?? 0,
@@ -163,10 +191,9 @@ export default defineComponent({
         return;
       }
     };
-
     const scenarioUnAllowedLocate = () => {
       if(locateList.value.length === 0){
-        /* Открываем модальное окно с предложением ввести город самостоятельно */
+        showModalInputLocate.value.showModal = true;
       }
     };
 
@@ -183,7 +210,9 @@ export default defineComponent({
       getWeatherAPI,
       toSwitchObject,
       showModalInputLocate,
-      showModalInputLocateTimeout
+      createLocateListItem,
+      appIdOWM,
+      createAndAcitveFirstLocate
     }
   },
 
@@ -288,8 +317,8 @@ export default defineComponent({
                                             {enableHighAccuracy: true});
     if(this.locateList.length === 0){
       setTimeout(() => {
-        if(this.showModalInputLocateTimeout){
-          this.showModalInputLocate = true;
+        if(this.showModalInputLocate.timeoutMounted && this.locateList.length === 0){
+          this.showModalInputLocate.showModal = true;
         }
     }, 5000)
     }
@@ -357,10 +386,40 @@ export default defineComponent({
     }
   }
 
+  .ww-input__form{
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: relative;
+    padding-bottom: 20px;
+    .ww-error__text{
+      position: absolute;
+      font-size: 12px;
+      color: darkred;
+      bottom: 0;
+    }
+  }
+
+  .ww-input__btn{
+    cursor: pointer;
+    width: 30px;
+    height: auto;
+    background-color: transparent;
+    transition: all .12s ease-in-out;
+    svg {fill: $main-color;}
+    &:hover{
+      transform: scale(.95);
+      opacity: .93;
+    }
+    &:active{
+      transform: scale(.85);
+      opacity: .9;
+    }
+  }
+
   .ww-answer__yes, .ww-answer__no{
     font-weight: 700;
   }
-
   .ww-answer__yes {
     color: darkgreen;
   }
@@ -373,7 +432,6 @@ export default defineComponent({
   .ww-btn-no {
     background: rgba(139, 0, 0, 0.2);
   }
-
   .ww-strong{
     font-weight: 700;
     font-size: 1.1em;
@@ -392,10 +450,17 @@ export default defineComponent({
     height: 100%;
     width: 100%;
     background: rgba(255,255,255,1);
+    padding: 10px;
     .ww-modal__switch_item, .ww-modal__switch_locate{
       text-align: center;
       .ww-btn-no{
         margin: 15px 0 5px;
+      }
+    }
+    .ww-modal__inputs-city{
+      .ww-modal__inputs-city_text{
+        text-align: center;
+        margin-bottom: 25px;
       }
     }
   }
@@ -431,6 +496,23 @@ export default defineComponent({
     transition: transform .4s ease;
     &:hover{
       transform: scale(0.8);
+    }
+  }
+
+  .ww-input{
+    padding: 5px;
+    border: 2px solid $main-color;
+    outline: none;
+    transition: box-shadow .25s ease;
+    &:hover{
+      box-shadow: 0px 0px 12px 0px rgba(0, 0, 0, 0.2);
+    }
+    &:focus{
+      box-shadow: 0px 0px 12px 2px rgba(0, 0, 0, 0.4);
+      border-color:lightseagreen;
+    }
+    &.ww-unvalid{
+      background: rgba(139, 0, 0, .3);
     }
   }
 

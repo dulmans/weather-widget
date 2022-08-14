@@ -1,8 +1,6 @@
 <template>
-    <div class="ww-modal">
-        <div class="ww-modal__content">
-            <slot></slot>
-        </div>
+    <div>
+        settings
     </div>
 </template>
 
@@ -10,6 +8,10 @@
 import { defineComponent } from 'vue'
 
 export default defineComponent({
-    name: 'my-modal'
+    setup () {
+
+
+        return {}
+    }
 })
 </script>
