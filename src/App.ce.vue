@@ -21,7 +21,7 @@
     <my-modal v-if="showModalInputLocate.showModal">
       <modal-inputs-city
       :appID="appIdOWM"
-      @submitInput="createAndAcitveFirstLocate"
+      @submitInput="createAndActiveItem"
       />
     </my-modal>
 
@@ -37,6 +37,13 @@
 
     <settings-widget
     v-else-if="displayType === 'setting'"
+    :listItems="locateList"
+    :currentItem="currentIdItem"
+    :appID="appIdOWM"
+    :showError="showErrorCreateCity"
+    @createItem="createAndActiveItem"
+    @switchItem="switchItemClick"
+    @deleteItem="deleteItemLocateList"
     />
   </div>
 </template>
@@ -77,7 +84,7 @@ export default defineComponent({
   setup(){
     const appIdOWM: string = 'c01eddb28c0ce3174c7282f5172965f1';
 
-    const displayType = ref<DisplayType>('main');
+    const displayType = ref<DisplayType>('setting');
     const currentIdItem = ref<number>(0);
     const currentWeatherInfo = ref<CurrentWeatherObject>({
       locate: {
@@ -100,6 +107,7 @@ export default defineComponent({
     const locateList = ref<LocateList[]>([]);
     const toSwitchObject = ref<LocateList>({id: 0, locateInfo:{city: '', country: ''}, coords:{latitude:0, longitude: 0}});
     const modalSwitchItemIndex = ref(0);
+    const showErrorCreateCity = ref<boolean>(false);
     const showModalInputLocate = ref<ShowModalInputLocate>({
       showModal: false as boolean,
       timeoutMounted: true as boolean
@@ -138,7 +146,7 @@ export default defineComponent({
       locateList.value = locateList.value.slice();
     };
 
-    const switchItemClick = () => {
+    const switchItemClick = (event:number) => {
       if(displayType.value === 'switch-item'){
         currentIdItem.value = locateList.value[modalSwitchItemIndex.value].id;
       }
@@ -146,9 +154,36 @@ export default defineComponent({
         createLocateListItem(toSwitchObject.value);
         currentIdItem.value = toSwitchObject.value.id;
       }
+      else if(displayType.value === 'setting' && event !== currentIdItem.value){
+        currentIdItem.value = event;
+      }
       displayType.value = 'main';
+    };
+    const deleteItemLocateList = (event:number) => {
+      if(locateList.value.length === 1){
+        locateList.value = locateList.value.filter(x => x.id !== event);
+        showModalInputLocate.value.showModal = true;
+        return;
+      }
+      else if(currentIdItem.value == event){
+        locateList.value = locateList.value.filter(x => x.id !== event);
+        currentIdItem.value = locateList.value[0].id;
+        return;
+      }
+      locateList.value = locateList.value.filter(x => x.id !== event);
     }
-    const createAndAcitveFirstLocate = (event:GetApiJson) => {
+    const createAndActiveItem = (event:GetApiJson) => {
+      if(locateList.value.length !== 0){
+        for(const locateItem of locateList.value){
+          if(locateItem.locateInfo.city === event.name){
+            showErrorCreateCity.value = true
+            setTimeout(() => {
+              showErrorCreateCity.value = false;
+            }, 2500);
+            return;
+          }
+        }
+      }
       const tempObject:LocateList = LocateListConstruct({city: event.name, country: event.sys.country},
                                             {latitude: event.coord?.lat ?? 0, longitude: event.coord?.lon ?? 0});
       createLocateListItem(tempObject);
@@ -212,7 +247,9 @@ export default defineComponent({
       showModalInputLocate,
       createLocateListItem,
       appIdOWM,
-      createAndAcitveFirstLocate
+      createAndActiveItem,
+      deleteItemLocateList,
+      showErrorCreateCity
     }
   },
 
@@ -222,11 +259,11 @@ export default defineComponent({
         localStorage.setItem('currentId', String(this.currentIdItem));
         const getCurrentLocate = () => {
             for(const checkCurrent of this.locateList){
-              if(this.currentIdItem === checkCurrent.id){
+              if(this.currentIdItem == checkCurrent.id){
                 return checkCurrent;
               }
             }
-            this.currentIdItem = this.locateList[0].id;
+            this.currentIdItem = this.locateList[0]?.id;
             return this.locateList[0];
         };
         const currentLocate:LocateList = getCurrentLocate();
@@ -275,35 +312,6 @@ export default defineComponent({
   },
 
   mounted(){
-    // ТЕСТОВЫЙ БЛОК...
-/*     const testOb:LocateList[] = [
-      {
-        id: 1,
-        locateInfo: {
-            city: 'Tutayev',
-            country: 'RU'
-        },
-        coords: {
-            latitude: 57.8853,
-            longitude: 39.5406
-        }
-      },
-      {
-        id: 1,
-        locateInfo: {
-            city: 'Moscow',
-            country: 'RU'
-        },
-        coords: {
-            latitude: 55.7522,
-            longitude: 37.6156
-        }
-      }
-    ]
-    localStorage.setItem('locateList', JSON.stringify(testOb));
-    localStorage.setItem('currentId', '1'); */
-    //... ТЕСТОВЫЙ БЛОК
-
     if(localStorage?.currentId){
       this.currentIdItem = Number(localStorage?.currentId);
     };
@@ -560,5 +568,94 @@ export default defineComponent({
       }
     }
   }
+
+  .ww-settings {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 100%;
+    padding-bottom: 28px;
+    margin-top: 18px;
+    .ww-locate_list__error{
+      position: absolute;
+      font-size: .8em;
+      color:white;
+      background: rgba(178, 34, 34, .65);
+      border: 2px solid rgb(178, 34, 34);
+      border-radius: 2px;
+      font-weight: 600;
+      padding: 5px;
+      width: 100%;
+      text-align: center;
+      top: -30px
+    }
+    .ww-locate-items__contain {
+      width: 100%;
+      flex-grow: 1;
+      overflow-y: auto;
+      > *:not(:last-child){
+        margin-bottom: 8px;
+      }
+      .ww-locate__list-item, .ww-locate__list-item-title{
+        display: flex;
+        align-items: center;
+      }
+      .ww-locate__list-item-title{
+        overflow: hidden;
+        margin-right: 5px;
+        flex-grow: 1;
+      }
+      .ww-locate__list-item {
+        width: 100%;
+        justify-content: space-between;
+        background: rgb(237, 235, 233);
+        padding: 5px 10px;
+        border: 2px;
+        &.ww-active__item{
+          border: 1px solid lightseagreen;
+        }
+        .ww-item__icon {
+          line-height: 0;
+          cursor: grab;
+          transition: transform .07s ease-in;
+          svg{
+            height: 100%;
+            width: 21px;
+          }
+          &:hover{
+            opacity: .8;
+          }
+          &.ww-locate-delete__item{
+            cursor: pointer;
+            &:hover{
+              transform: scale(.9);
+            }
+            &:active{
+              opacity: 1;
+              transform: scale(.6);
+            }
+          }
+        }
+        .ww-locate-info__item {
+          font-size: .9em;
+          margin-left: 10px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          flex-grow: 1;
+          cursor: pointer;
+        }
+      }
+    }
+    .ww-settings__input {
+      .ww-settings-input__description {
+        font-weight: 600;
+        font-size: .8em;
+      }
+    }
+
+  }
+
 
 </style>
