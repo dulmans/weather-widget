@@ -1,19 +1,79 @@
-# source
+## Встраиваемый виджет погоды
 
-## Project setup
-```
-npm install
+Универсальный и легко встраиваемый виджет погоды, разработанный на **Vue.js 3** с использованием **TypeScript** и препроцессора стилей **SCSS**.
+
+Всю информацию, которую обрабатывает и выводит виджет, взята из бесплатного публичного [API OpenWeatherMap](https://openweathermap.org/api).
+
+---
+
+## Как установить виджет на сайт?
+
+Для этого нужно просто подключить один _.js_ файл к вашему веб-сайту и прописать тэг `<weather-widget/>` в вашей разметке.
+
+> Вот пример подключения виджета на основе пустой HTML-разметки:
+
+```html
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width,initial-scale=1">
+        <title>Weatger Widget - test</title>
+    </head>
+    <body>
+
+        <weather-widget/>
+        <script type="text/javascript" src="/weather_widget--app.js"></script>
+
+    </body>
+</html>
 ```
 
-### Compiles and hot-reloads for development
-```
-npm run serve
+---
+
+## Что умеет виджет?
+
+~ВООБЩЕ ВСЁ~
+
+1.  Запрашивать местоположение пользователя и определять погоду по местоположению;
+2.  Предусмотрено множество (это действительно так) сценариев скрипта, которые проигрываются в зависимости от действий пользователя;
+3.  Виджет умеет хранить в кэше необходимую информацию, которая помогает оставаться виджету быстро действенным и нересурсозатратным;
+4.  Даёт пользователю полную свободу в сортировке избранных локаций, которая также запоминается виджетом и в дальнейшем выводит элементы в соответствии с настройкой пользователя;
+5.  Полностью валидную и адаптивную HTML-разметку, которая не сломает ваш сайт.
+
+---
+
+## Экраны виджета
+
+> Основной экран
+>
+> ![](https://33333.cdn.cke-cs.com/kSW7V9NHUXugvhoQeFaf/images/02d1e88f74d8dd2b20944703bf60c7f8fbe7134d5d680e15.png)
+
+> Экран настроек
+>
+> ![](https://33333.cdn.cke-cs.com/kSW7V9NHUXugvhoQeFaf/images/9900aaf76eb516b7e268cec50034ccddc4e95ed431f9d3a9.png)
+
+> Экран ручного ввода города (если юзер заблокировал определение местоположения)
+>
+> ![](https://33333.cdn.cke-cs.com/kSW7V9NHUXugvhoQeFaf/images/8313fa6e2d0cc0bdbf5c817f5e31c06488f823bddad049dc.png)
+
+> Основной экран при загрузке информации
+>
+> ![](https://33333.cdn.cke-cs.com/kSW7V9NHUXugvhoQeFaf/images/46880c89d9b79d09aa4c32e3053f414a76244d82ea37ad60.png)
+
+> Предложение юзеру переключится с активного элемента X, на текущую определённую с помощью местоположения, локацию Y
+>
+> ![](https://33333.cdn.cke-cs.com/kSW7V9NHUXugvhoQeFaf/images/29dd987a1276075166b2f1dacac409a8390291c9e58263b2.png)
+
+---
+
+## Какие технологии были использованы?
+
+```plaintext
+Vue ( 3.2.13) : основной функционал виджета;
+Axios ( 0.27.2) : GET-запросы к API;
+Vuedraggable ( 4.1.0) : функционал Drag&Drop для избранных локаций в настройках виджета.
 ```
 
-### Compiles and minifies for production
-```
-npm run build
-```
-
-### Customize configuration
-See [Configuration Reference](https://cli.vuejs.org/config/).
+[_t.me: @ulmanss_](https://t.me/ulmanss)
