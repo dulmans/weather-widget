@@ -16,7 +16,7 @@ export default defineComponent({
         modelValue: {
             type: String as PropType<string>,
             require: true
-        }
+        } // Хранит в себе значение инпута
     }
 })
 </script>

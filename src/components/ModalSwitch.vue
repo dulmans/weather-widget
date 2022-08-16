@@ -34,24 +34,27 @@
 </template>
 
 <script lang="ts">
+/* Импортируем модули */
 import { defineComponent, PropType } from 'vue';
 
+/* Импортируем type-файлы .TS */
 import SwitchItemProp from '../types/SwitchItemProp';
 import DisplayType from '../types/DisplayType';
 
+/* Импортируем компоненты .VUE */
 import MyButton from './UI/MyButton.vue';
 
 export default defineComponent({
     components: { MyButton },
-    props:{
+    props: {
         cityInfoObj:{
             type: Object as PropType<SwitchItemProp>,
             require: true
-        },
+        }, // Объект, который содержит информацию о текущей локации и возможной локации юзера
         displayTypes: {
             type: String as PropType<DisplayType>,
             require: true
-        }
+        } // Пропс, который содержит текущий активный display
     }
 })
 </script>

@@ -1,4 +1,4 @@
-import CurrentCityCounty from './CurrentCityCounty';
+import CurrentCityCounty from './CurrentCityCountry';
 import CompassSector from './CompassSector'
 import WeatherIcon from './WeatherIcon'
 

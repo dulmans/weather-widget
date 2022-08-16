@@ -1,5 +1,6 @@
 <template>
   <div class="ww-app">
+
     <my-modal v-if="displayType === 'switch-item' || displayType === 'switch-locate'">
       <modal-switch
       v-if="displayType === 'switch-item'"
@@ -18,12 +19,14 @@
       />
     </my-modal>
 
+
     <my-modal v-if="showModalInputLocate.showModal">
       <modal-inputs-city
       :appID="appIdOWM"
       @submitInput="createAndActiveItem"
       />
     </my-modal>
+
 
     <widget-header
     :currentLocate="currentWeatherInfo.locate"
@@ -44,14 +47,18 @@
     @createItem="createAndActiveItem"
     @switchItem="switchItemClick"
     @deleteItem="deleteItemLocateList"
+    @updateLists="updateItemLists"
     />
+
   </div>
 </template>
 
 <script lang="ts">
-import { computed, defineComponent, ref } from 'vue';
-import axios from 'axios';
+/* Импортируем модули */
+import { defineComponent, ref} from 'vue';
+import axios, { AxiosResponse } from 'axios';
 
+/* Импортируем type-файлы .TS */
 import CurrentWeatherObject from './types/CurrentWeatherObject';
 import DisplayType from './types/DisplayType';
 import LocateList from './types/LocateList';
@@ -60,12 +67,13 @@ import CompassSector from './types/CompassSector';
 import Coords from './types/Coords';
 import ShowModalInputLocate from './types/ShowModalInputLocate';
 
+/* Импортируем компоненты .VUE */
 import MainWidget from './components/MainWidget.vue';
 import WidgetHeader from './components/WidgetHeader.vue';
 import MyButton from './components/UI/MyButton.vue';
 import MyModal from './components/UI/MyModal.vue';
 import ModalSwitch from './components/ModalSwitch.vue';
-import CurrentCityCounty from './types/CurrentCityCounty';
+import CurrentCityCountry from './types/CurrentCityCountry';
 import ModalInputsCity from './components/ModalInputsCity.vue';
 import SettingsWidget from './components/SettingsWidget.vue';
 
@@ -79,13 +87,17 @@ export default defineComponent({
     ModalSwitch,
     ModalInputsCity,
     SettingsWidget
-},
+  },
 
   setup(){
-    const appIdOWM: string = 'c01eddb28c0ce3174c7282f5172965f1';
-
-    const displayType = ref<DisplayType>('setting');
-    const currentIdItem = ref<number>(0);
+/* =================================================================== */
+  /* ПЕРЕМЕННЫЕ */
+    /* ============= */
+    /* ПОСТОЯННЫЕ ПЕРЕМЕННЫЕ: (основные переменные, которые необходимы для работы виджета) */
+    /* ============= */
+    const appIdOWM: string = 'c01eddb28c0ce3174c7282f5172965f1'; // API-токен OpenWeatherMap
+    const displayType = ref<DisplayType>('main'); // Страница виджета по-умолчанию
+    const currentIdItem = ref<number>(0); // Переменная, которая отвечает за активный ID-элемент
     const currentWeatherInfo = ref<CurrentWeatherObject>({
       locate: {
         city: 'load',
@@ -103,19 +115,29 @@ export default defineComponent({
       pressure: 0,
       humidity: 0,
       visibility: 0
-    });
-    const locateList = ref<LocateList[]>([]);
-    const toSwitchObject = ref<LocateList>({id: 0, locateInfo:{city: '', country: ''}, coords:{latitude:0, longitude: 0}});
-    const modalSwitchItemIndex = ref(0);
-    const showErrorCreateCity = ref<boolean>(false);
+    }); // Переменная, которая хранит в себе всю информацию об активном элемента виджета
     const showModalInputLocate = ref<ShowModalInputLocate>({
       showModal: false as boolean,
       timeoutMounted: true as boolean
-    })
+    }); // Переменная, отвечающая за отображение модального окна собственноручного ввода локации
+    const locateList = ref<LocateList[]>([]); // Переменная, в которую подгружается список элементов из кэша
+
+    /* ============= */
+    /* ВРЕМЕННЫЕ ПЕРЕМЕННЫЕ: (необходимые для какой-то функции/ отображения элемента) */
+    /* ============= */
+    const toSwitchObject = ref<LocateList>({id: 0, locateInfo:{city: '', country: ''}, coords:{latitude:0, longitude: 0}});
+    const modalSwitchItemIndex = ref(0);
+    const showErrorCreateCity = ref<boolean>(false);
+/* =================================================================== */
 
 
+/* =================================================================== */
+  /* ФУНКЦИИ */
+    /* ============= */
+    /* НЕЗАВИСИМЫЕ ФУНКЦИИ: (которые независимы от других функций) */
+    /* ============= */
     const getWeatherAPI = async (latIn: number, lonIn: number):Promise<GetApiJson> => {
-      const response = await axios.get('https://api.openweathermap.org/data/2.5/weather?', {
+      const response:AxiosResponse = await axios.get('https://api.openweathermap.org/data/2.5/weather?', {
           params: {
             lat: latIn,
             lon: lonIn,
@@ -124,10 +146,10 @@ export default defineComponent({
             units: 'metric'
           }
         });
-      return response.data;
-    };
+      return response?.data;
+    }; // Функция, которая выполняет API-запросы на OWM и получает полную информацию о погоде по запрашиваемой локации
 
-    const LocateListConstruct = (liC:CurrentCityCounty, cC:Coords) => {
+    const LocateListConstruct = (liC:CurrentCityCountry, cC:Coords):LocateList => {
       const res:LocateList = {
         id: Date.now(),
         locateInfo: {
@@ -140,26 +162,14 @@ export default defineComponent({
         }
       };
       return res;
-    };
-    const createLocateListItem = (item:LocateList) => {
+    }; // Функция-конструктор, которая конструирует элемент локации дял дальнейшей записи его в кэш
+
+    const createLocateListItem = (item:LocateList):void => {
       locateList.value.push(item);
       locateList.value = locateList.value.slice();
-    };
+    }; // Функция, которая принимает в себя сконструированный элемент локации и добавляет его в общий массив и в кэш
 
-    const switchItemClick = (event:number) => {
-      if(displayType.value === 'switch-item'){
-        currentIdItem.value = locateList.value[modalSwitchItemIndex.value].id;
-      }
-      else if(displayType.value === 'switch-locate'){
-        createLocateListItem(toSwitchObject.value);
-        currentIdItem.value = toSwitchObject.value.id;
-      }
-      else if(displayType.value === 'setting' && event !== currentIdItem.value){
-        currentIdItem.value = event;
-      }
-      displayType.value = 'main';
-    };
-    const deleteItemLocateList = (event:number) => {
+    const deleteItemLocateList = (event:number):void => {
       if(locateList.value.length === 1){
         locateList.value = locateList.value.filter(x => x.id !== event);
         showModalInputLocate.value.showModal = true;
@@ -169,10 +179,34 @@ export default defineComponent({
         locateList.value = locateList.value.filter(x => x.id !== event);
         currentIdItem.value = locateList.value[0].id;
         return;
-      }
+      };
       locateList.value = locateList.value.filter(x => x.id !== event);
-    }
-    const createAndActiveItem = (event:GetApiJson) => {
+    }; // Функция, которая отвечает за удаление элементов из списка избранных локаций
+
+    const updateItemLists = (event:LocateList[]):void => {
+      localStorage.setItem('locateList', JSON.stringify(event));
+      return;
+    }; // Функция, которая обновляет порядок элементов (который пользователь сам сделал, перемещая избранные локации) в кэше
+
+
+    /* ============= */
+    /* ЗАВИСИМЫЕ ФУНКЦИИ: (которые зависят от других функций) */
+    /* ============= */
+    const switchItemClick = (event:number):void => {
+      if(displayType.value === 'switch-item'){
+        currentIdItem.value = locateList.value[modalSwitchItemIndex.value].id;
+      }
+      else if(displayType.value === 'switch-locate'){
+        createLocateListItem(toSwitchObject.value);
+        currentIdItem.value = toSwitchObject.value.id;
+      }
+      else if(displayType.value === 'setting' && event !== currentIdItem.value){
+        currentIdItem.value = event;
+      };
+      displayType.value = 'main';
+    }; // Функция, которая реагирует на произвольные события и переключает активный элемент, в зависимости от displayType, от которого получен event
+
+    const createAndActiveItem = (event:GetApiJson):void => {
       if(locateList.value.length !== 0){
         for(const locateItem of locateList.value){
           if(locateItem.locateInfo.city === event.name){
@@ -181,24 +215,23 @@ export default defineComponent({
               showErrorCreateCity.value = false;
             }, 2500);
             return;
-          }
-        }
-      }
+          };
+        };
+      };
       const tempObject:LocateList = LocateListConstruct({city: event.name, country: event.sys.country},
                                             {latitude: event.coord?.lat ?? 0, longitude: event.coord?.lon ?? 0});
       createLocateListItem(tempObject);
       currentIdItem.value = tempObject.id;
       showModalInputLocate.value.showModal = false;
-    };
+    }; // Функция, которая в качестве значения получает response-ответ OWM, создаёт элемент и делает его активным элементов виджета
 
-    const scenarioAllowedLocate = async ({coords}: any) => {
+    const scenarioAllowedLocate = async ({coords}:  any):Promise<void> => {
       showModalInputLocate.value.timeoutMounted = false;
       showModalInputLocate.value.showModal = false;
-
       const coordsFunc:Coords = {
         latitude: coords.latitude ?? 0,
         longitude: coords.longitude ?? 0
-      }
+      };
       const response:GetApiJson = await getWeatherAPI(coordsFunc.latitude, coordsFunc.longitude);
       const tempObject:LocateList = LocateListConstruct({city: response.name, country: response.sys.country},
                                             {latitude: response.coord?.lat ?? 0, longitude: response.coord?.lon ?? 0});
@@ -212,9 +245,9 @@ export default defineComponent({
               modalSwitchItemIndex.value = index;
               displayType.value = 'switch-item';
               return;
-            }
-          }
-        }
+            };
+          };
+        };
         toSwitchObject.value = tempObject;
         displayType.value = 'switch-locate';
         return;
@@ -224,16 +257,17 @@ export default defineComponent({
         locateList.value = locateList.value.slice();
         currentIdItem.value = tempObject.id;
         return;
-      }
-    };
+      };
+    }; // Сценарий, при котором юзер соглашается на определение его местоположения
+
     const scenarioUnAllowedLocate = () => {
       if(locateList.value.length === 0){
         showModalInputLocate.value.showModal = true;
-      }
-    };
-
-
-    return {
+      };
+      return;
+    }; // Сценарий, при котором юзер не соглашается на определение его местоположения
+/* =================================================================== */
+  return {
       currentWeatherInfo,
       scenarioAllowedLocate,
       scenarioUnAllowedLocate,
@@ -249,10 +283,15 @@ export default defineComponent({
       appIdOWM,
       createAndActiveItem,
       deleteItemLocateList,
-      showErrorCreateCity
+      showErrorCreateCity,
+      updateItemLists,
     }
   },
 
+
+
+/* =================================================================== */
+  /* ОТСЛЕЖИВАЕМЫЕ ЭЛЕМЕНТЫ */
   watch: {
     async currentIdItem(){
       if(this.currentIdItem){
@@ -261,25 +300,26 @@ export default defineComponent({
             for(const checkCurrent of this.locateList){
               if(this.currentIdItem == checkCurrent.id){
                 return checkCurrent;
-              }
-            }
+              };
+            };
             this.currentIdItem = this.locateList[0]?.id;
             return this.locateList[0];
         };
         const currentLocate:LocateList = getCurrentLocate();
 
-        const getWeatherJSON = async () => {
-          const lat = currentLocate?.coords?.latitude ?? 0;
-          const lon = currentLocate?.coords?.longitude ?? 0;
+        const getWeatherJSON = async ():Promise<GetApiJson> => {
+          const lat: number = currentLocate?.coords?.latitude ?? 0;
+          const lon: number = currentLocate?.coords?.longitude ?? 0;
           return await this.getWeatherAPI(lat, lon);
         };
         const getWeather:GetApiJson = await getWeatherJSON();
 
         if(getWeather){
-          const compassSector:CompassSector[] = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW", "N"];
+          const compassSector:CompassSector[] =
+          ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW", "N"];
           const windDirection:CompassSector = compassSector[Math.round(getWeather.wind.deg / 22.5)];
 
-          const descript = () => {
+          const descriptionFirstUpperCase = ():string => {
             const descArr = getWeather.weather[0].description.split('');
             descArr[0] = descArr[0].toUpperCase();
             return descArr.join('') ?? '';
@@ -293,7 +333,7 @@ export default defineComponent({
             icon: getWeather.weather[0].icon,
             temp: getWeather.main.temp,
             feelsLike: getWeather.main.feels_like,
-            description: descript(),
+            description: descriptionFirstUpperCase(),
             wind:{
                 speed: getWeather.wind.speed,
                 deg: getWeather.wind.deg,
@@ -302,35 +342,41 @@ export default defineComponent({
             pressure: getWeather.main.pressure,
             humidity: getWeather.main.humidity,
             visibility: getWeather.visibility
-          }
-        }
-      }
-    },
+          };
+        };
+      };
+    }, // Следим за переменной активного элемента и обновляем его при обновлении переменной, а также сохраняем активный ID в кэше
+
     locateList(){
       localStorage.setItem('locateList', JSON.stringify(this.locateList));
-    }
+    } // Следим за обновлением переменной избранных локаций и обновляет их в кэше
   },
+/* =================================================================== */
 
+
+/* =================================================================== */
+  /* НАЧАЛЬНЫЕ СКРИПТЫ ПОСЛЕ ПОДГРУЗКИ ВСЕХ МОДУЛЕЙ */
   mounted(){
-    if(localStorage?.currentId){
-      this.currentIdItem = Number(localStorage?.currentId);
-    };
     if(localStorage?.locateList){
       this.locateList = JSON.parse(localStorage?.locateList);
-    };
-
+    }; // Подгружаем избранные локации из кэша
+    if(localStorage?.currentId){
+      this.currentIdItem = Number(localStorage?.currentId);
+    }; // Подгружаем активный ID элемента из кэша
 
     navigator.geolocation.getCurrentPosition(this.scenarioAllowedLocate,
                                             this.scenarioUnAllowedLocate,
-                                            {enableHighAccuracy: true});
+                                            {enableHighAccuracy: true}); // Запрашиваем доступ к локации юзера
+
     if(this.locateList.length === 0){
       setTimeout(() => {
         if(this.showModalInputLocate.timeoutMounted && this.locateList.length === 0){
           this.showModalInputLocate.showModal = true;
         }
-    }, 5000)
-    }
+      }, 5000);
+    }; // Если юзер не предоставил доступ к локации и не заблокировал его (просто закрыл браузерную модалку запроса), то спустя 5s. выводим модалку с сообщением, что мы не смогли определить локацию юзера и предлагаем самостоятельно ввести город
   }
+/* =================================================================== */
 });
 </script>
 
