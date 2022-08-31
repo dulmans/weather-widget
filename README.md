@@ -48,23 +48,23 @@
 
 > Основной экран
 >
-> ![](https://33333.cdn.cke-cs.com/kSW7V9NHUXugvhoQeFaf/images/02d1e88f74d8dd2b20944703bf60c7f8fbe7134d5d680e15.png)
+> ![](https://i.postimg.cc/rF3fCw20/main.png)
 
 > Экран настроек
 >
-> ![](https://33333.cdn.cke-cs.com/kSW7V9NHUXugvhoQeFaf/images/9900aaf76eb516b7e268cec50034ccddc4e95ed431f9d3a9.png)
+> ![](https://i.postimg.cc/htmpCRKC/settings.png)
 
 > Экран ручного ввода города (если юзер заблокировал определение местоположения)
 >
-> ![](https://33333.cdn.cke-cs.com/kSW7V9NHUXugvhoQeFaf/images/8313fa6e2d0cc0bdbf5c817f5e31c06488f823bddad049dc.png)
+> ![](https://i.postimg.cc/8CBwSdJM/upps.png)
 
 > Основной экран при загрузке информации
 >
-> ![](https://33333.cdn.cke-cs.com/kSW7V9NHUXugvhoQeFaf/images/46880c89d9b79d09aa4c32e3053f414a76244d82ea37ad60.png)
+> ![](https://i.postimg.cc/CKVJXr1w/upload.png)
 
 > Предложение юзеру переключится с активного элемента X, на текущую определённую с помощью местоположения, локацию Y
 >
-> ![](https://33333.cdn.cke-cs.com/kSW7V9NHUXugvhoQeFaf/images/29dd987a1276075166b2f1dacac409a8390291c9e58263b2.png)
+> ![](https://i.postimg.cc/PxXyrLYc/switch.png)
 
 ---
 
